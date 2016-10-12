@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.Window;
 
@@ -15,6 +14,7 @@ import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.appindexing.Thing;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -29,6 +29,7 @@ import java.util.Locale;
 
 public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLongClickListener, OnMapReadyCallback {
 
+    int location;
     private GoogleMap mMap;
     public ActionBar actionBar;
     /**
@@ -51,13 +52,20 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
     @Override
     public void onMapLongClick( LatLng point ) {
 
+        // Use the geocoder to enable us to resolve an address from the Lat / Long
         Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+
+        // The default is to just store the date in case we cannot get a place name
         String label = new Date().toString();
 
         try {
+            // Store the address in the address list using the geocoder with lat / lon, we want the first result only.
             List<Address> listAddresses = geocoder.getFromLocation(point.latitude, point.longitude,1);
 
+            // Check we have obtained an address line to store
             if ( listAddresses != null && listAddresses.size() > 0) {
+
+                // Set label to the first address we stored
                 label = listAddresses.get(0).getAddressLine(0);
             }
         } catch (IOException e) {
@@ -68,11 +76,12 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
 
         MainActivity.arrayAdapter.notifyDataSetChanged();   // Notify to the array adapter that we have changed the list
 
+        MainActivity.locations.add(point);                  // Add the Lat / Lng to the locations array list in MainActivity
 
-        mMap.addMarker(( new MarkerOptions()
-        .position(point)
+        mMap.addMarker(( new MarkerOptions()                // Create the new marker on the map
+        .position( point )
         .title( label )
-        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))));
+        .icon( BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN ))));
     }
 
     @Override
@@ -83,8 +92,9 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
 
         setContentView(R.layout.activity_your_places);
 
-        // Enable the back button on the action bar
+        location = -1; // Set to default to say we don't have a valid location.
 
+        // Enable the back button on the action bar
         actionBar = getSupportActionBar();
         actionBar.setDisplayShowHomeEnabled(true);
 
@@ -94,9 +104,10 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
         mapFragment.getMapAsync(this);
 
         // get the data we passed in from earlier from the first intent.
-
+        
         Intent intent = getIntent();
-        Log.i("locationInfo", Integer.toString(intent.getIntExtra("locationInfo", -1)));
+        //Log.i("locationInfo", Integer.toString(intent.getIntExtra("locationInfo", -1)));
+        location = intent.getIntExtra("locationInfo",-1);   // -1 is the default value if no value was picked up
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -120,6 +131,23 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
 //        LatLng sydney = new LatLng(-34, 151);
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
+        // check to make sure the location is not the first element and also that the location is not -1.
+        // Anything above the value of 0 represents a valid list view index.
+
+        if ( location != -1 && location != 0 ) {
+
+            // Get location from the locations array list using the location as the indexing variable and use a zoom level of 10 to zoom in.
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(MainActivity.locations.get(location), 10));
+
+            // Show the previous location on the map from both array lists using the location as the index.
+            // This time display that in red instead of green.
+
+            mMap.addMarker((new MarkerOptions()
+                    .position(MainActivity.locations.get(location))
+                    .title(MainActivity.places.get(location))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))));
+        }
 
         // Add the long click listener
         mMap.setOnMapLongClickListener(this);
