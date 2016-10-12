@@ -12,6 +12,10 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
+    // static class variable that is accessible outside of this class
+    static ArrayList<String> places;
+    static ArrayAdapter arrayAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -19,11 +23,11 @@ public class MainActivity extends AppCompatActivity {
 
         ListView listView = (ListView) findViewById( R.id.listView );
 
-        final ArrayList<String> places = new ArrayList<>();
+        places = new ArrayList<>();
 
         places.add("Add a new place...");
 
-        ArrayAdapter arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, places);
+        arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, places);
         listView.setAdapter(arrayAdapter);
 
         // call the map activity
