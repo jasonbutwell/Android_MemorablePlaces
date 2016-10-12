@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Memorable Places</string>
+    <string name="title_activity_your_places">Your Places</string>
 </resources>
