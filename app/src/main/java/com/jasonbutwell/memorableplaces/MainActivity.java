@@ -15,9 +15,9 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     // static class variable that is accessible outside of this class
-    static ArrayList<String> places;
-    static ArrayAdapter arrayAdapter;
-    static ArrayList<LatLng> locations;
+    public static ArrayList<String> places;
+    public static ArrayAdapter arrayAdapter;
+    public static ArrayList<LatLng> locations;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -1,12 +1,18 @@
 package com.jasonbutwell.memorableplaces;
 
+import android.content.Context;
 import android.content.Intent;
 import android.location.Address;
+import android.location.Criteria;
 import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.Window;
 
@@ -27,11 +33,17 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLongClickListener, OnMapReadyCallback {
+public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLongClickListener, OnMapReadyCallback, LocationListener {
 
-    int location;
+    private int location;
     private GoogleMap mMap;
-    public ActionBar actionBar;
+    private ActionBar actionBar;
+
+    // Location specific
+    private LocationManager locationManager;
+    private String provider;
+    //
+
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -42,6 +54,9 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
+                // Location specific
+                locationManager.removeUpdates(this);
+                //
                 this.finish();      // If home button closed then finish this activity
                 return true;
             default:
@@ -50,7 +65,7 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
     }
 
     @Override
-    public void onMapLongClick( LatLng point ) {
+    public void onMapLongClick(LatLng point) {
 
         // Use the geocoder to enable us to resolve an address from the Lat / Long
         Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
@@ -60,10 +75,10 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
 
         try {
             // Store the address in the address list using the geocoder with lat / lon, we want the first result only.
-            List<Address> listAddresses = geocoder.getFromLocation(point.latitude, point.longitude,1);
+            List<Address> listAddresses = geocoder.getFromLocation(point.latitude, point.longitude, 1);
 
             // Check we have obtained an address line to store
-            if ( listAddresses != null && listAddresses.size() > 0) {
+            if (listAddresses != null && listAddresses.size() > 0) {
 
                 // Set label to the first address we stored
                 label = listAddresses.get(0).getAddressLine(0);
@@ -72,16 +87,16 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
             e.printStackTrace();
         }
 
-        MainActivity.places.add( label );                   // Add the label of the new marker to the arraylist in the MainActivity
+        MainActivity.places.add(label);                   // Add the label of the new marker to the arraylist in the MainActivity
 
         MainActivity.arrayAdapter.notifyDataSetChanged();   // Notify to the array adapter that we have changed the list
 
         MainActivity.locations.add(point);                  // Add the Lat / Lng to the locations array list in MainActivity
 
-        mMap.addMarker(( new MarkerOptions()                // Create the new marker on the map
-        .position( point )
-        .title( label )
-        .icon( BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN ))));
+        mMap.addMarker((new MarkerOptions()                // Create the new marker on the map
+                .position(point)
+                .title(label)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))));
     }
 
     @Override
@@ -91,6 +106,11 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
         requestWindowFeature(Window.FEATURE_ACTION_BAR);
 
         setContentView(R.layout.activity_your_places);
+
+        // Location specific
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        provider = locationManager.getBestProvider(new Criteria(), false);
+        //
 
         location = -1; // Set to default to say we don't have a valid location.
 
@@ -104,10 +124,10 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
         mapFragment.getMapAsync(this);
 
         // get the data we passed in from earlier from the first intent.
-        
+
         Intent intent = getIntent();
         //Log.i("locationInfo", Integer.toString(intent.getIntExtra("locationInfo", -1)));
-        location = intent.getIntExtra("locationInfo",-1);   // -1 is the default value if no value was picked up
+        location = intent.getIntExtra("locationInfo", -1);   // -1 is the default value if no value was picked up
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -135,7 +155,14 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
         // check to make sure the location is not the first element and also that the location is not -1.
         // Anything above the value of 0 represents a valid list view index.
 
-        if ( location != -1 && location != 0 ) {
+        // Add the long click listener
+        mMap.setOnMapLongClickListener(this);
+
+        if (location != -1 && location != 0) {
+
+            // Location specific
+            locationManager.removeUpdates(this);
+            //
 
             // Get location from the locations array list using the location as the indexing variable and use a zoom level of 10 to zoom in.
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(MainActivity.locations.get(location), 10));
@@ -147,10 +174,11 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
                     .position(MainActivity.locations.get(location))
                     .title(MainActivity.places.get(location))
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))));
+        } else {
+            // Location specific
+            locationManager.requestLocationUpdates(provider, 400, 1, this);
+            //
         }
-
-        // Add the long click listener
-        mMap.setOnMapLongClickListener(this);
     }
 
     /**
@@ -187,5 +215,45 @@ public class yourPlaces extends AppCompatActivity implements GoogleMap.OnMapLong
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         AppIndex.AppIndexApi.end(client, getIndexApiAction());
         client.disconnect();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Location specific
+        if ( location == -1 || location == 0 ) {
+            locationManager.requestLocationUpdates(provider, 400, 1, this);
+        }
+        //
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Location specific
+        locationManager.removeUpdates(this);
+        //
+    }
+
+    @Override
+    public void onLocationChanged(Location ulocation) {
+        // Location specific
+        mMap.animateCamera( CameraUpdateFactory.newLatLngZoom( new LatLng(ulocation.getLatitude(), ulocation.getLongitude()), 10 ) );
+        //
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+        Log.i("Location","Disabled");
     }
 }
